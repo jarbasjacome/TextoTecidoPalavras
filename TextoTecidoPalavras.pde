@@ -186,20 +186,13 @@ void limpaTudo() {
 }
 
 void irParaLinhaDaProximaPalavraSel() {
-  println("irParaLinhaDaProximaPalavraSel()");
   if (palavrasSelecionadas.size()>0) {
     if (palavraSelecionadaAtual == null) {
-      println("palavraSelecionadaAtual é null");
       palavraSelecionadaAtual = palavrasSelecionadas.first();
-      println("palavraSelecionadaAtual.linha = "+palavraSelecionadaAtual.linha + 
-        "palavras[palavraSelecionadaAtual.palavra] = "+palavras[palavraSelecionadaAtual.palavra]);      
       irParaLinha(palavraSelecionadaAtual.linha-int(recuoPalavraSel/(float)tamTexto));
     } else {
-      println("palavraSelecionadaAtual não é null");
       Caractere proximaPalSel = palavrasSelecionadas.higher(palavraSelecionadaAtual);
       if (proximaPalSel != null) {
-        println("proximaPalSel.linha = "+proximaPalSel.linha + 
-          "palavras[proximaPalSel.palavra] = "+palavras[proximaPalSel.palavra]);
         irParaLinha(proximaPalSel.linha-int(recuoPalavraSel/(float)tamTexto));
         palavraSelecionadaAtual = proximaPalSel;
       }
@@ -208,15 +201,11 @@ void irParaLinhaDaProximaPalavraSel() {
 }
 
 void irParaLinhaDaPalavraSelAnterior() {
-  println("irParaLinhaDaPalavraSelAnterior()");
   if (palavrasSelecionadas.size()>0) {
     if (palavraSelecionadaAtual == null) {
-      println("palavraSelecionadaAtual é null");
       palavraSelecionadaAtual = palavrasSelecionadas.first();
-      println("palavraSelecionadaAtual.");
       irParaLinha(palavraSelecionadaAtual.linha-int(recuoPalavraSel/(float)tamTexto));
     } else {  
-      println("palavraSelecionadaAtual não é null");
       Caractere proximaPalSel = palavrasSelecionadas.lower(palavraSelecionadaAtual);
       if (proximaPalSel != null) {
         irParaLinha(proximaPalSel.linha-int(recuoPalavraSel/(float)tamTexto));
@@ -227,7 +216,6 @@ void irParaLinhaDaPalavraSelAnterior() {
 }
 
 void irParaLinha(int novaLinha) {
-  print("irParaLinha("+novaLinha+") -> ");
   if (novaLinha >= 0 && novaLinha < numLinhas) {
     float posicaoCorrigida = delimita(converteLinhaParaPosTexto (novaLinha), 
       convertePosBarraRolagemParaPosTexto (1), 
@@ -237,7 +225,6 @@ void irParaLinha(int novaLinha) {
       linhaAtual = convertePosTextoParaLinha(novaPosTexto.y);
     }
   }
-  println("linhaAtual = " + linhaAtual);
 }
 
 float converteLinhaParaPosTexto (int linha) {
@@ -322,12 +309,10 @@ void keyPressed() {
       statusTecla = "SETA CIMA";
       exibirStatusTecladoMouse = true;
       irParaLinha (linhaAtual-1);
-      println("irParaLinha ("+linhaAtual+"-1)");
     } else if (keyCode == DOWN) {
       statusTecla = "SETA BAIXO";
       exibirStatusTecladoMouse = true;
       irParaLinha (linhaAtual+1);      
-      println("irParaLinha ("+linhaAtual+"+1)");
     } else if (key != CODED) {
       texto = texto + key;
       atualizarLeioute = true;
@@ -558,12 +543,10 @@ void ajustaPosCaracteres() {
   palavrasSelecionadas.clear();
   //Percorre tagsSelecionadas para adicionar as palavrasSelecionadas do texto.
   for (int j=0; j<tagsSelecionadas.size(); j++) {
-    //    println("palavras[tags[tagsSelecionadas.get(tag)].palavra] = " + palavras[tags[tagsSelecionadas.get(tag)].palavra]);
     //adiciona as palavras do texto correspondente a essa tag em palavrasSelecionadas
     if (tags[tagsSelecionadas.get(j)] != null) {
       for (int i=0; i<tags[tagsSelecionadas.get(j)].aparicoesNoTexto.size(); i++) {
         palavrasSelecionadas.add(caracteresInfo[tags[tagsSelecionadas.get(j)].aparicoesNoTexto.get(i)]);
-        //      println("adicionou caracteresInfo[tags[tag].aparicoesNoTexto.get(i)="+caracteresInfo[tags[tagsSelecionadas.get(tag)].aparicoesNoTexto.get(i)].linha);
       }
     }
   }
@@ -692,19 +675,14 @@ void mouseReleased() {
       if (tagsSelecionadas.contains(tagMouseEmCima)) {
         tagsSelecionadas.remove(Integer.valueOf(tagMouseEmCima));
       }
-      println("tagsSelecionadas = "+ tagsSelecionadas.toString());
       atualizarLeioute = true;
     }
   } else if (mouseButton == LEFT) {
     if (tagMouseEmCima > -1) {
       if (!tagsSelecionadas.contains(tagMouseEmCima)) {
         tagsSelecionadas.add(tagMouseEmCima);
-        println("adicionou "+palavras[tags[tagMouseEmCima].palavra]);
-        println("primeira ocorrencia: " + palavras[caracteresInfo[tags[tagMouseEmCima].aparicoesNoTexto.get(0)].palavra]);
-        println("tagsSelecionadas = "+ tagsSelecionadas.toString());
       } else {
         tagsSelecionadas.remove(Integer.valueOf(tagMouseEmCima));
-        println("tagsSelecionadas = "+ tagsSelecionadas.toString());
       }
       //depois de adicionar ou remover palavras da seleção é necessário atualizar a palavra atual,
       //caso ela tenha sido removida, a função floor da NavigableSet (que TreeSet implementa) localiza
@@ -794,18 +772,15 @@ Object GetFromClipboard (DataFlavor flavor) {
     try
     {
       object = contents.getTransferData(flavor);
-      //println ("Clipboard.GetFromClipboard() >> Object transferred from clipboard.");
     }
 
     catch (UnsupportedFlavorException e1) // Unlikely but we must catch it
     {
-      //println("Clipboard.GetFromClipboard() >> Unsupported flavor: " + e1);
       e1.printStackTrace();
     }
 
     catch (java.io.IOException e2)
     {
-      //println("Clipboard.GetFromClipboard() >> Unavailable data: " + e2);
       e2.printStackTrace() ;
     }
   }
