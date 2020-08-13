@@ -1,6 +1,8 @@
 # TextoTecidoPalavras
 Localiza palavras mais frequentes num texto.
 
+<img src="exemplo_tese_rogerio_lourenco.PNG" width="300"/>
+
 ## Como rodar
 - Instale o Processing: https://processing.org/download/
 - Baixe o código (https://github.com/jarbasjacome/TextoTecidoPalavras/archive/master.zip) ou clone esse repositório.
