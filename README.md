@@ -1,6 +1,8 @@
 # TextoTecidoPalavras
 Localiza palavras mais frequentes num texto.
 
+<img src="exemplo_tese_rogerio_lourenco.PNG" width="300"/>
+
 https://www.youtube.com/watch?v=t1SRuC2Z5U8
 
 ## Como rodar
