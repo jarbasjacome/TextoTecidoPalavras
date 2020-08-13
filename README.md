@@ -1,7 +1,7 @@
 # TextoTecidoPalavras
 Localiza palavras mais frequentes num texto.
 
-[![TextoTecidoPalavras](http://img.youtube.com/vi/t1SRuC2Z5U8/0.jpg)](https://www.youtube.com/watch?v=t1SRuC2Z5U8 "TextoTecidoPalavras")
+https://www.youtube.com/watch?v=t1SRuC2Z5U8
 
 ## Como rodar
 - Instale o Processing: https://processing.org/download/
