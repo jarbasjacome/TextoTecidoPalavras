@@ -1,0 +1,25 @@
+#################################
+# Java generated files          #
+#################################
+*.class
+*.java
+# Package Files #
+*.jar
+*.war
+*.ear
+
+#################################
+# Processing files              #
+#################################
+sketch.properties
+applet
+application.macosx
+build-tmp/
+web-export/
+application.linux-arm64
+application.linux-armv6hf
+application.linux32
+application.linux64
+application.windows32
+application.windows64
+application.macosx

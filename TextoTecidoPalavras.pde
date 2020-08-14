@@ -92,10 +92,7 @@ boolean exibirStatusTecladoMouse = true;
 
 void setup()
 {
-  //size (960, 1080);
-  //size (1920, 1080);
-  //size (683, 768);
-  size (1366, 768);
+  fullScreen();
   background (0);
   fonte500 = loadFont("Cantarell-Bold-500.vlw");
   fonte48 = loadFont("Cantarell-Bold-48.vlw");
