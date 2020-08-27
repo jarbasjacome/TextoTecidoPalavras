@@ -10,7 +10,9 @@ https://www.youtube.com/watch?v=t1SRuC2Z5U8
 https://github.com/jarbasjacome/TextoTecidoPalavras/releases
 Das opções sem Java, os arquivos são menores, mas necessitam que você tenha Java instalado.
 - Descompacte o arquivo .zip
-- Abra a pasta "application..." e clique duas vezes no executável TextoTecidoPalavras (para Windows é um arquivo terminado em .exe).
+- Abra a pasta "application..." e clique duas vezes no executável TextoTecidoPalavras (para Windows é um arquivo terminado em .exe). No Linux, torne o arquivo executável (`chmod +x TextoTecidoPalavras`) e execute-o com `./TextoTecidoPalavras?`. 
+
+Depois, irá abrir uma tela preta e basta clicar na tela começar a digitar ou colar um texto com CTRL+V.
 
 ## Como rodar com Processing (serve para Windows, Linux e MacOS)
 - Instale o Processing: https://processing.org/download/
