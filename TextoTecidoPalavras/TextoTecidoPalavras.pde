@@ -2,24 +2,39 @@
  * For information on usage and redistribution, and for a DISCLAIMER OF ALL
  * WARRANTIES, see the file, "LICENSE.txt," in this distribution.  */
 
+// Ctrl + v: cola texto da área de transferência (Clipboard)
+// Ctrl + t: ajusta tamanho do texto sobre qual o mouse está posicionado.
+// Ctrl + l: liga ou desliga as linhas de conexões (tecido)
+// Ctrl + mouse wheel: aumenta ou diminui o tamanho do texto.
+// Ctrl + delete: apaga todo texto.
+// mouse wheel: sobe ou desce o texto.
+// clique com botao esquerdo nas palavras seleciona ou desseleciona.
+// clique com botao direito nas palavras adiciona para a lista palavras ignoradas e ocultadas.
+
+//Importar bibliotecas para permitir ler o que foi colado com ctrl+C (clipboard)
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.util.*;
+
+//Importa estruturas de dados não padrão do Processing.
+import java.util.HashSet;
+import java.util.TreeSet;
 import java.util.Map;
+import java.util.Arrays;
 
 String texto = "";
 boolean atualizarLeioute = true;
+
 String quebraLinha = "\n\r\f";
 String separadoresPalavras = "'\"?!:,.;/() \b"+quebraLinha;
-String[] palavras;
-Tag[] tags;
+String[] textoSeparadoPorPalavras;
+Palavra[] listaDePalavras;
 String[] IGNORAR = {};
 HashSet<String> palavrasIgnoradas;
 float tamTagMaisFreq = 0.05;
 int tagMouseEmCima = -1;
-int numTags = 0;
+int numPalavras = 0;
 int ultimaTagVisivel = 0;
 ArrayList<Integer> tagsSelecionadas;
 //https://stackoverflow.com/questions/36645938/collection-that-uses-listiterator-and-is-a-unique-list
@@ -36,7 +51,6 @@ float tamTexto = 1;
 float tamTextoManual = 1;
 boolean ajustarParaExibirTextoCompleto = true;
 float tamTags = 1;
-int TAM_MAX_TEXTO = 10000;
 int TAM_MAX_PALAVRA = 200;
 float margemEsqTexto = 0.0;
 float margemDirTexto = 0.5;
@@ -54,7 +68,6 @@ PVector posTexto;
 PVector novaPosTexto;
 int posCursor;
 float alturaTexto = 0;
-int ultimoModificado = 0;
 int corInicialTags = 0;  //Vermelho
 int corFinalTags = 213;  //Violeta 
 
@@ -67,7 +80,6 @@ PFont fonte8b;
 
 boolean ctrl = false;
 
-PVector[] conexoes;
 int numConexoes = 0;
 boolean desenhaTodasConexoesDasTagsVisiveis = false;
 //Se ultrapassar esse numero o programa passa a exibir somente selecionadas
@@ -92,7 +104,8 @@ boolean exibirStatusTecladoMouse = true;
 
 void setup()
 {
-  fullScreen();
+  size(800,600);
+  //fullScreen();
   background (0);
   fonte500 = loadFont("Cantarell-Bold-500.vlw");
   fonte48 = loadFont("Cantarell-Bold-48.vlw");
@@ -111,9 +124,9 @@ void draw()
   background(0);
   colorMode(HSB);
   fill(255, 0, 255);
-  ultimoModificado = 0;
   larguraAreaTexto = margemDirTexto-margemEsqTexto;
   alturaAreaTexto = margemInfTexto-margemSupTexto;
+
   if (atualizarLeioute) {
     atualizarLeioute = !analisaTexto();
   }
@@ -177,7 +190,7 @@ void limpaTudo() {
   desenhaTodasConexoesDasTagsVisiveis = true;
 
   tagsSelecionadas = new ArrayList<Integer>();
-  
+
   ajustarParaExibirTextoCompleto = true;
   tamTexto = 1;
 }
@@ -309,7 +322,7 @@ void keyPressed() {
     } else if (keyCode == DOWN) {
       statusTecla = "SETA BAIXO";
       exibirStatusTecladoMouse = true;
-      irParaLinha (linhaAtual+1);      
+      irParaLinha (linhaAtual+1);
     } else if (key != CODED) {
       texto = texto + key;
       atualizarLeioute = true;
@@ -325,73 +338,109 @@ void keyReleased() {
   }
 } 
 
+// Identifica e conta a frequência de palavras.
+// Posiciona os caracteres na área de texto.
+// Quando o texto não cabe na área de texto, reajusta o tamanho e interrompe (break no for) a análise.
+// Essa interrupção (break no for) que dá o efeito de animação de preenchimento mais perceptível
+// quando um texto grande é colado.
 boolean analisaTexto() {
+  // Retorna verdadeiro se conseguiu encaixar o texto inteiro na área sem precisar ajustar tamanho.
   boolean retorno = true;
-  palavras = trim(splitTokens(texto, separadoresPalavras));
 
-  HashMap<String, Integer> tagsIndices = new HashMap<String, Integer>();
+  // Para auxiliar a contagem de freqüência das palavras, 
+  // Carrega todas as palavras que aparecem no texto no array palavras
+  // mantendo a ordem em que aparecem e as repetições.
+  textoSeparadoPorPalavras = trim(splitTokens(texto, separadoresPalavras));
 
-  if (texto.length() > TAM_MAX_TEXTO) {
-    TAM_MAX_TEXTO = 2*texto.length();
-  }
+  // Guarda o índice da palavra em textoSeparadoPorPalavras que está sendo analisada
+  // em cada iteração do for.
+  int palavraAtual = 0;
+  
+  // Para auxiliar a contagem de freqüência das palavras, inicia estrutura palavrasComIndice
+  // que guarda as palavras encontradas, sem repetí-las e guardando o índice correspondente no
+  // array de palavras textoSeparadoPorPalavras.
+  HashMap<String, Integer> palavrasComIndice = new HashMap<String, Integer>();
+
+  // Número total de linhas.
   numLinhas = 0;
 
-  caracteresInfo = new Caractere[TAM_MAX_TEXTO];
+  // Inicia o array que guarda as posições dos caracteres em relação à tela (normalizada, entre 0 e 1).
+  caracteresInfo = new Caractere[texto.length()];
 
-  conexoes = new PVector[TAM_MAX_TEXTO];
+  // Número total de conexoes.
   numConexoes = 0;
 
-  tags = new Tag[TAM_MAX_TEXTO];
-  numTags = 0;
+  // Inicia lista de palavras encontradas, sem repetição.
+  listaDePalavras = new Palavra[texto.length()];
+  
+  numPalavras = 0;  // Número total de palavras sem contar as repetições.
 
-  float larguraLinhaPx = 0;
-  alturaTexto = tamTexto;
-  PVector posVarredura = new PVector(0, alturaTexto);
-  int palavraAtual = 0;
+  float larguraLinhaPx = 0;  // largura da linha na tela em número de pixels
+  alturaTexto = tamTexto;  // altura que o texto realmente ocupa dentro da área.
+
+  // Guarda a posição normalizada em relação à tela (entre 0 e 1)
+  // em que deverá ser colocado o caractere atual de cada iteração do for.
+  PVector posVarredura = new PVector(0, alturaTexto);  
+  
+  // Informa se o caractere da iteração anterior era um separador de palavras.
   boolean caracAnteriorEhSeparador = true;
 
+  // Esse for percorre os caracteres da String texto.
+  // Quando detecta que o texto ultrapassa a área de texto, esse laço é interrompido
+  // e o texto é desenhado incompleto, recomeçando no próximo loop, já com o tamanho ajustado,
+  // criando o efeito de animação da área de texto sendo preenchida, ao passar dos quadros.
   for (int i=0; i<texto.length(); i++) {
-    ultimoModificado = i;
-
-    //Checa se formou uma nova palavra:
+    //Checa se o caractere atual separa palavras:
     boolean caracAtualSeparaPalavras = false;
     if (match(""+texto.charAt(i), "["+separadoresPalavras+"]") != null) {
       caracAtualSeparaPalavras = true;
     }
 
-    //Define qual deve ser a posição do caractere atual.
-    textSize(tamTexto*height);
-    float larguraPx = textWidth(texto.charAt(i));      //Largura que o caractere ocupará na tela em pixels
-    if (match(""+texto.charAt(i), "["+quebraLinha+"]") != null) { //Se caractere atual quebra linha
+    //Calcula qual deverá ser a posição do caractere atual em relação à tela.
+    textSize(tamTexto*height); // define o tamanho do texto para textWidth() poder calcular
+                               // a largura na tela do caractere atual.
+    float larguraCaracPx = textWidth(texto.charAt(i));      //Largura que o caractere atual ocupará na tela em pixels
+  
+    //Se caractere atual quebra linha
+    if (match(""+texto.charAt(i), "["+quebraLinha+"]") != null) {
+      // Cria um novo caractere informando a posição do posVarredura, largura q o caractere ocupa,
+      // se é separador de palavras, índice da palavra a qual esse caractere pertence (palavraAtual),
+      // e a linha a qual pertence (numLinhas informa qual a linha atual)
       caracteresInfo[i] = new Caractere(new PVector(posVarredura.x, posVarredura.y), 
-        larguraPx, caracAtualSeparaPalavras, palavraAtual, numLinhas);
-      posVarredura.y += tamTexto;
-      posVarredura.x = 0;
-      larguraLinhaPx = 0;
-      if (!adicionarLinha(alturaAreaTexto)) {
-        if (ajustarParaExibirTextoCompleto) {
-          retorno = false;
-          break;
+        larguraCaracPx, caracAtualSeparaPalavras, palavraAtual, numLinhas);
+
+      posVarredura.y += tamTexto; // Incrementa na altura de uma linha o "cursor" que posiciona os caracteres.
+      posVarredura.x = 0;         // Como ocorre uma quebra de linha a posição X é no canto esquerdo (=0); 
+      larguraLinhaPx = 0;         // Como ocorre uma quebra de linha o contador da largura da linha deve ser zerado; 
+      if (!adicionarLinha(alturaAreaTexto)) {    // Se adiciona linha e texto não cabe...
+        if (ajustarParaExibirTextoCompleto) {    // Se estiver exibindo texto todo...
+          retorno = false;                       // analisaTexto() retorna falso, pois precisa ser chamada de novo
+          break;                                 // e para o for. Isso serve para fazer o efeito de animação do
+                                                 // texto preenchendo.
         }
       }
-    } else {                                              //Se caractere atual não quebra linha
+    } else { //Se caractere atual não quebra linha
       caracteresInfo[i] = new Caractere(new PVector(posVarredura.x, posVarredura.y), 
-        larguraPx, caracAtualSeparaPalavras, palavraAtual, numLinhas);
-      larguraLinhaPx += larguraPx;
-      posVarredura.x += larguraPx/width;
-      if (larguraLinhaPx > larguraAreaTexto*width) {          //Palavra passsou do limite da area do texto.
-        if (!caracAtualSeparaPalavras) {
+        larguraCaracPx, caracAtualSeparaPalavras, palavraAtual, numLinhas);
+      larguraLinhaPx += larguraCaracPx;        // incrementa o contador de largura da linha em pixels.
+      posVarredura.x += larguraCaracPx/width;  // incrementa a posição x do "cursor" que posiciona os caracteres.
+      if (larguraLinhaPx > larguraAreaTexto*width) {          //Linha ultrapasssou a largura da área do texto.
+        if (!caracAtualSeparaPalavras) {       // se o caractere atual não é um separador de palavras 
           if (palavraAtual > 0) {
-            if (textWidth(palavras[palavraAtual-1]) > larguraAreaTexto*width) {
-              //if (ajustarParaExibirTextoCompleto) {
+            if (textWidth(textoSeparadoPorPalavras[palavraAtual-1]) > larguraAreaTexto*width) {
+              // Entra aqui se a própria palavra (não apenas a linha) ultrapassa a largura da área de texto.
+              // calcula um novo tamanho de texto suficientemente pequeno para caber na largura essa palavra.
               tamTexto *= larguraAreaTexto*width/(float)larguraLinhaPx;
-              retorno = false;
-              break;
-              //}
-            } else {
-              posVarredura.y += tamTexto;
-              posVarredura.x = 0;
-              larguraLinhaPx = 0;
+              retorno = false;               // analisaTexto() retorna falso, pois precisa ser chamada de novo
+              break;                         // e para o for. Isso serve para fazer o efeito de animação do
+                                             // texto preenchendo.
+            } else { // a palavra sozinha não ultrapassa a largura da área de texto.
+              posVarredura.y += tamTexto;    // passa o cursor para próxima linha.
+              posVarredura.x = 0;            // posiciona o cursor no lado esquerdo.
+              larguraLinhaPx = 0;            // reinicia a variável que conta a largura da linha.
+
+              // aqui começa uma gambiarra feiosa para reposicionar todos os caracteres dessa palavra para
+              // que ela seja movida para a próxima linha, no lado esquedo.
               int j=i;
               while (!caracteresInfo[j].ehSeparador) {        //Volta até achar o início da palavra.
                 j--;
@@ -404,6 +453,8 @@ boolean analisaTexto() {
                 posVarredura.x += caracteresInfo[j].larguraPx/width;
                 larguraLinhaPx += caracteresInfo[j].larguraPx;
               }
+              // Como ele moveu a palavra que ultrapassou a largura, para baixo, precisa adicionar uma nova linha
+              // e reanalisar o texto, caso esteja no modo de ajuste automático para exibir texto completo.
               if (!adicionarLinha(alturaAreaTexto)) {
                 if (ajustarParaExibirTextoCompleto) {
                   retorno = false;
@@ -420,15 +471,15 @@ boolean analisaTexto() {
     if (!caracAtualSeparaPalavras) {         //Caractere atual NÃO É separador de palavras.
       if (caracAnteriorEhSeparador) {
         int indicePalavra = palavraAtual;
-        if (tagsIndices.get(palavras[indicePalavra])==null) {
-          if (!palavrasIgnoradas.contains(palavras[indicePalavra])) {
-            tags[numTags] = new Tag(indicePalavra, i);
-            tagsIndices.put(palavras[indicePalavra], numTags);
-            numTags++;
+        if (palavrasComIndice.get(textoSeparadoPorPalavras[indicePalavra])==null) {
+          if (!palavrasIgnoradas.contains(textoSeparadoPorPalavras[indicePalavra])) {
+            listaDePalavras[numPalavras] = new Palavra(indicePalavra, i);
+            palavrasComIndice.put(textoSeparadoPorPalavras[indicePalavra], numPalavras);
+            numPalavras++;
             numConexoes++;
           }
         } else {
-          tags[tagsIndices.get(palavras[indicePalavra])].adicionarAparicao(i);
+          listaDePalavras[palavrasComIndice.get(textoSeparadoPorPalavras[indicePalavra])].adicionarAparicao(i);
           numConexoes++;
         }
         palavraAtual++;
@@ -440,7 +491,7 @@ boolean analisaTexto() {
   }
 
   // Ordena tags por frequencia decrescente.
-  Arrays.sort(tags, 0, numTags);
+  Arrays.sort(listaDePalavras, 0, numPalavras);
 
   if (palavraSelecionadaAtual == null && palavrasSelecionadas.size() > 0) {
     palavraSelecionadaAtual = palavrasSelecionadas.first();
@@ -451,14 +502,19 @@ boolean analisaTexto() {
   return retorno;
 }
 
+// Incrementa a contagem de linhas de texto e se a altura final ultrapassar
+// a altura da área de texto, reduz o tamanho da fonte e retorna false.
 boolean adicionarLinha(float alturaAreaTexto) {
   boolean coubeNaAreaTexto = true;
-  alturaTexto += tamTexto;
+  alturaTexto += tamTexto;            // ajusta a informação da altura ocupada pelo texto.
   numLinhas++;
   if (alturaTexto > alturaAreaTexto) {          //Se altura do texto ultrapassar o limite
     if (ajustarParaExibirTextoCompleto) {
-      tamTexto *= alturaAreaTexto/alturaTexto;    //diminui o tamanho do texto.
-      tamTexto *= 0.9;
+//      tamTexto *= alturaAreaTexto/alturaTexto;
+      tamTexto *= 0.9;                            // Reduz o tamanho da fonte em 90%
+                                                  //[TODO] Essa redução determina a velocidade de animação
+                                                  // do texto preenchendo a área de texto. Melhor fazer
+                                                  // isso como um parâmetro de velocidade.
     }
     coubeNaAreaTexto = false;
   }
@@ -482,8 +538,10 @@ void ajustaPosCaracteres() {
     }
   }
   // Calcula tamanho das tags baseada no tamanho fixo da tag mais frequente;
-  if (tags != null & tags[0] != null) {
-    tamTags = tamTagMaisFreq/tags[0].frequencia;
+  if (listaDePalavras != null & listaDePalavras.length>0) {
+    if (listaDePalavras[0] != null) {
+      tamTags = tamTagMaisFreq/listaDePalavras[0].frequencia;
+    }
   }
   textSize(tamTags*height);
 
@@ -493,18 +551,18 @@ void ajustaPosCaracteres() {
   tagMouseEmCima = -1;
   ultimaTagVisivel = -1;
   float tamEspectroCores = 1;
-  if (palavras.length*tamTags < 1) {             //Ajusta para diminuir tamanho do expectro caso seja menor q a tela.
-    tamEspectroCores = palavras.length*tamTags;
+  if (textoSeparadoPorPalavras.length*tamTags < 1) {             //Ajusta para diminuir tamanho do expectro caso seja menor q a tela.
+    tamEspectroCores = textoSeparadoPorPalavras.length*tamTags;
     //posVarredura.y = 0.5 - tamEspectroCores/2.0;
   }
-  for (int i=0; i<numTags; i++) {
-    if (palavras != null) {
-      if (tags[i] != null) {
-        if (palavras[tags[i].palavra] != null) {
-          float alturaTag = tags[i].frequencia*tamTags;
+  for (int i=0; i<numPalavras; i++) {
+    if (textoSeparadoPorPalavras != null) {
+      if (listaDePalavras[i] != null) {
+        if (textoSeparadoPorPalavras[listaDePalavras[i].palavra] != null) {
+          float alturaTag = listaDePalavras[i].frequencia*tamTags;
 
           //posVarredura.y -= 0.5;
-          tags[i].matiz = int((corFinalTags-corInicialTags)*posVarredura.y/(float)tamEspectroCores);
+          listaDePalavras[i].matiz = int((corFinalTags-corInicialTags)*posVarredura.y/(float)tamEspectroCores);
           //posVarredura.y += 0.5;
 
           if (posVarredura.y <= 1) {
@@ -515,23 +573,23 @@ void ajustaPosCaracteres() {
           posVarredura.x = margemDirTexto;
           posVarredura.y += alturaTag;
           textSize(alturaTag*height);
-          tags[i].retangulo[0] = new PVector(margemEsqTags, posVarredura.y-alturaTag);
-          tags[i].retangulo[1] = new PVector(margemDirTags, posVarredura.y);
-          if (mouseEmCima (tags[i].retangulo[0].x*width, tags[i].retangulo[0].y*height, 
-            tags[i].retangulo[1].x*width, tags[i].retangulo[1].y*height)) {
+          listaDePalavras[i].retangulo[0] = new PVector(margemEsqTags, posVarredura.y-alturaTag);
+          listaDePalavras[i].retangulo[1] = new PVector(margemDirTags, posVarredura.y);
+          if (mouseEmCima (listaDePalavras[i].retangulo[0].x*width, listaDePalavras[i].retangulo[0].y*height, 
+            listaDePalavras[i].retangulo[1].x*width, listaDePalavras[i].retangulo[1].y*height)) {
             tagMouseEmCima = i;
-            tags[i].mouseEmCima = true;
+            listaDePalavras[i].mouseEmCima = true;
             if (mousePressed) {
-              tags[i].mouseClicando = true;
+              listaDePalavras[i].mouseClicando = true;
             }
           } else {
-            tags[i].mouseEmCima = false;
+            listaDePalavras[i].mouseEmCima = false;
             if (mousePressed) {
-              tags[i].mouseClicando = false;
+              listaDePalavras[i].mouseClicando = false;
             }
           }
-          tags[i].pos.x = posVarredura.x;
-          tags[i].pos.y = posVarredura.y;
+          listaDePalavras[i].pos.x = posVarredura.x;
+          listaDePalavras[i].pos.y = posVarredura.y;
         }
       }
     }
@@ -541,9 +599,9 @@ void ajustaPosCaracteres() {
   //Percorre tagsSelecionadas para adicionar as palavrasSelecionadas do texto.
   for (int j=0; j<tagsSelecionadas.size(); j++) {
     //adiciona as palavras do texto correspondente a essa tag em palavrasSelecionadas
-    if (tags[tagsSelecionadas.get(j)] != null) {
-      for (int i=0; i<tags[tagsSelecionadas.get(j)].aparicoesNoTexto.size(); i++) {
-        palavrasSelecionadas.add(caracteresInfo[tags[tagsSelecionadas.get(j)].aparicoesNoTexto.get(i)]);
+    if (listaDePalavras[tagsSelecionadas.get(j)] != null) {
+      for (int i=0; i<listaDePalavras[tagsSelecionadas.get(j)].aparicoesNoTexto.size(); i++) {
+        palavrasSelecionadas.add(caracteresInfo[listaDePalavras[tagsSelecionadas.get(j)].aparicoesNoTexto.get(i)]);
       }
     }
   }
@@ -573,19 +631,19 @@ void desenhaConexoes() {
 }
 
 void desenhaConexoesTag (int i, PVector p1, PVector p2, int brilho, float grossura) {
-  if (tags == null || tags[i] == null) {
+  if (listaDePalavras == null || listaDePalavras[i] == null) {
     return;
   }
-  p1.x = tags[i].pos.x;
-  int numAparicoes = tags[i].aparicoesNoTexto.size();
+  p1.x = listaDePalavras[i].pos.x;
+  int numAparicoes = listaDePalavras[i].aparicoesNoTexto.size();
   for (int j=0; j<numAparicoes; j++) {
-    p1.y = tags[i].pos.y-j*tamTags-tamTags/2.0;
-    int caracIndice = tags[i].aparicoesNoTexto.get(numAparicoes-1-j);
+    p1.y = listaDePalavras[i].pos.y-j*tamTags-tamTags/2.0;
+    int caracIndice = listaDePalavras[i].aparicoesNoTexto.get(numAparicoes-1-j);
     p2.x = caracteresInfo[caracIndice].pos.x;
     p2.y = caracteresInfo[caracIndice].pos.y;
     textSize(tamTexto*height); //para posicionar linha no meio da palavra.
-    float larguraPalavraPx = textWidth(palavras[tags[i].palavra]);
-    stroke(tags[i].matiz, 255, brilho);
+    float larguraPalavraPx = textWidth(textoSeparadoPorPalavras[listaDePalavras[i].palavra]);
+    stroke(listaDePalavras[i].matiz, 255, brilho);
     strokeWeight(tamTexto*height*grossura);
     line(p1.x*width, p1.y*height, 
       p2.x*width+larguraPalavraPx/2, 
@@ -597,9 +655,9 @@ void desenhaConexoesTag (int i, PVector p1, PVector p2, int brilho, float grossu
     if (pos2Y <= height && pos2Y > -tamTexto*height) {
       rectMode(CORNER);
       noStroke();
-      fill(tags[i].matiz, 255, brilho);
+      fill(listaDePalavras[i].matiz, 255, brilho);
       if (palavraSelecionadaAtual == caracteresInfo[caracIndice]) {
-        fill(tags[i].matiz, 255, brilhoPalavraAtual);
+        fill(listaDePalavras[i].matiz, 255, brilhoPalavraAtual);
       }
       rect(p2.x*width-destaquePx, 
         pos2Y, 
@@ -626,34 +684,34 @@ void desenhaTexto() {
 
 void desenhaTags() {
   textSize(tamTags*height);
-  if (ultimaTagVisivel > 0 && tags[ultimaTagVisivel] == null) {
+  if (ultimaTagVisivel > 0 && listaDePalavras[ultimaTagVisivel] == null) {
     ultimaTagVisivel--;
   }
   for (int i=0; i<=ultimaTagVisivel; i++) {
     colorMode(HSB);
-    if (tags[i].mouseEmCima || tagsSelecionadas.contains(i)) {
-      fill(tags[i].matiz, 255, brilhoConexoesSelecionada);
+    if (listaDePalavras[i].mouseEmCima || tagsSelecionadas.contains(i)) {
+      fill(listaDePalavras[i].matiz, 255, brilhoConexoesSelecionada);
     } else {
-      fill(tags[i].matiz, 255, brilhoConexoes);
+      fill(listaDePalavras[i].matiz, 255, brilhoConexoes);
     }
-    if (tags[i].mouseClicando) {
-      fill(tags[i].matiz, 255, brilhoConexoesMouseClicando);
+    if (listaDePalavras[i].mouseClicando) {
+      fill(listaDePalavras[i].matiz, 255, brilhoConexoesMouseClicando);
     }
     noStroke();
     rectMode(CORNERS);
-    rect(tags[i].retangulo[0].x*width, tags[i].retangulo[0].y*height, 
-      tags[i].retangulo[1].x*width, tags[i].retangulo[1].y*height);
+    rect(listaDePalavras[i].retangulo[0].x*width, listaDePalavras[i].retangulo[0].y*height, 
+      listaDePalavras[i].retangulo[1].x*width, listaDePalavras[i].retangulo[1].y*height);
   }
   for (int i=0; i<=ultimaTagVisivel; i++) {
-    float alturaTag = tags[i].frequencia*tamTags;
+    float alturaTag = listaDePalavras[i].frequencia*tamTags;
     textSize(alturaTag*height);
     colorMode(HSB);
     noStroke();
     rectMode(CENTER);
     verificaFonte(alturaTag, true);
     fill(255); 
-    text(palavras[tags[i].palavra]+" ("+tags[i].frequencia+")", 
-      tags[i].pos.x*width, tags[i].pos.y*height);
+    text(textoSeparadoPorPalavras[listaDePalavras[i].palavra]+" ("+listaDePalavras[i].frequencia+")", 
+      listaDePalavras[i].pos.x*width, listaDePalavras[i].pos.y*height);
   }
 }
 
@@ -668,7 +726,7 @@ boolean mouseEmCima ( float ret1x, float ret1y, float ret2x, float ret2y) {
 void mouseReleased() {
   if (mouseButton == RIGHT) {
     if (tagMouseEmCima > -1) {
-      palavrasIgnoradas.add(palavras[tags[tagMouseEmCima].palavra]);
+      palavrasIgnoradas.add(textoSeparadoPorPalavras[listaDePalavras[tagMouseEmCima].palavra]);
       if (tagsSelecionadas.contains(tagMouseEmCima)) {
         tagsSelecionadas.remove(Integer.valueOf(tagMouseEmCima));
       }
@@ -784,7 +842,6 @@ Object GetFromClipboard (DataFlavor flavor) {
 
   return object;
 } 
-
 
 static final javax.swing.JFrame getJFrame(final PSurface surf) {
   return

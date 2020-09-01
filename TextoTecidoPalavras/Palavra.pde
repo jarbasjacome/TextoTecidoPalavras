@@ -2,7 +2,7 @@
  * For information on usage and redistribution, and for a DISCLAIMER OF ALL
  * WARRANTIES, see the file, "LICENSE.txt," in this distribution.  */
 
-class Tag implements Comparable {
+class Palavra implements Comparable {
   int palavra;
   int frequencia=0;
   IntList aparicoesNoTexto; //indices do primeiro caractere de cada aparicao dessa tag no texto.
@@ -12,7 +12,7 @@ class Tag implements Comparable {
   int matiz;
   boolean mouseClicando;
   
-  Tag (int p, int indiceCaractere) {
+  Palavra (int p, int indiceCaractere) {
     palavra = p;
     aparicoesNoTexto = new IntList();
     adicionarAparicao(indiceCaractere);
@@ -28,7 +28,7 @@ class Tag implements Comparable {
   }
 
   int compareTo(Object o) {
-    Tag e = (Tag)o;
+    Palavra e = (Palavra)o;
     return e.frequencia-frequencia;
   }
 }
